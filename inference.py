@@ -254,7 +254,10 @@ class ParticleFilter(InferenceModule):
             dictionary (where there could be an associated weight with each position) is incorrect
             and will produce errors
         """
-        "*** YOUR CODE HERE ***"
+        self.particles = []
+        for i in range(self.numParticles):
+            j = i % len(self.legalPositions)
+            self.particles.append(self.legalPositions[j])
 
     def observe(self, observation, gameState):
         """
@@ -288,8 +291,26 @@ class ParticleFilter(InferenceModule):
         noisyDistance = observation
         emissionModel = busters.getObservationDistribution(noisyDistance)
         pacmanPosition = gameState.getPacmanPosition()
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+
+        if noisyDistance == None:
+            self.particles = []
+            for i in range(self.numParticles):
+                self.particles.append(self.getJailPosition())
+        else:
+            nonZero = False
+            weights = util.Counter()
+            for particle in self.particles:
+                trueDistance = util.manhattanDistance(particle, pacmanPosition)
+                weight = emissionModel[trueDistance]
+                weights[particle] += weight
+                if weight > 0: nonZero = True
+
+            if nonZero:
+                self.particles = []
+                for i in range(self.numParticles):
+                    self.particles.append(util.sample(weights))
+            else:
+                self.initializeUniformly(gameState)
 
     def elapseTime(self, gameState):
         """
@@ -315,8 +336,11 @@ class ParticleFilter(InferenceModule):
           ghost locations conditioned on all evidence and time passage. This method
           essentially converts a list of particles into a belief distribution (a Counter object)
         """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        result = util.Counter()
+        inc = 1.0 / self.numParticles
+        for particle in self.particles:
+            result[particle] += inc
+        return result
 
 class MarginalInference(InferenceModule):
     "A wrapper around the JointInference module that returns marginal beliefs about ghosts."
